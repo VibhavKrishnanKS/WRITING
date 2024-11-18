@@ -1,6 +1,5 @@
 import streamlit as st
 from huggingface_hub import InferenceClient
-import time
 
 # Initialize Hugging Face Inference client with the API key
 client = InferenceClient(api_key="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")
@@ -35,25 +34,22 @@ if prompt := st.chat_input("What is up?"):
         for m in st.session_state.messages
     ]
     
-    # Prepare the assistant's message container for typing effect
-    assistant_message_container = st.chat_message("assistant")
-    with assistant_message_container:
-        response_placeholder = st.empty()  # Placeholder for dynamic response
-
-    # Collect the response dynamically
-    response = ""
-    for chunk in client.chat.completions.create(
+    # Send the request to Hugging Face API to get model response
+    stream = client.chat.completions.create(
         model=st.session_state["mistral_model"], 
         messages=messages, 
         max_tokens=100,
         stream=True
-    ):
+    )
+    
+    # Collect the response in a single string
+    response = ""
+    for chunk in stream:
         response += chunk.choices[0].delta.content
-        # Update the placeholder with the progressively built response
-        response_placeholder.markdown(response)
-        
-        # Add a delay for slower typing effect (0.1 seconds)
-        time.sleep(0.02)
 
-    # Finalize the assistant's response in the session state
+    # Display the entire response in one go
+    with st.chat_message("assistant"):
+        st.markdown(response)  # Display the full response at once
+    
+    # Add assistant response to session state
     st.session_state.messages.append({"role": "assistant", "content": response})
